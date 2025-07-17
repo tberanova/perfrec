@@ -1,0 +1,63 @@
+{% load static %}
+<div class="card h-100 shadow-sm text-center border-dark bg-white text-black">
+    <div class="card-body d-flex flex-column justify-content-between">
+  
+      <!-- Content wrapper -->
+      <div class="flex-grow-1">
+        <!-- Image -->
+        {% with perfume.image_url|default:"" as img %}
+        <img src="{% if perfume.image %}{{ perfume.image.url }}{% else %}/media/perfume_images/placeholder.webp{% endif %}"
+               alt="{{ perfume.name }} image"
+               class="img-fluid mb-3"
+               style="max-height: 180px; object-fit: cover;">
+        {% endwith %}
+  
+        <!-- Name + Brand -->
+        <h5 class="card-title">
+          <a href="{% url 'perfume_detail' slug=perfume.slug %}" class="text-black text-decoration-none">
+            {{ perfume.name }}
+          </a>
+        </h5>
+        <p class="card-text">{{ perfume.brand }}</p>
+  
+        <!-- Optional Info -->
+        {% if perfume.perfumeaccord_set.all %}
+          <p class="text-muted small"><strong>Accords:</strong>
+            {% for perfume_accord in perfume.perfumeaccord_set.all %}
+              {{ perfume_accord.accord.name }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+          </p>
+        {% endif %}
+        {% if perfume.year %}
+          <p class="text-muted small"><strong>Launch Year:</strong> {{ perfume.year }}</p>
+        {% endif %}
+        {% if perfume.gender %}
+          <p class="text-muted small"><strong>Gender:</strong> {{ perfume.gender }}</p>
+        {% endif %}
+      </div>
+  
+      <!-- Action buttons -->
+      <div class="mt-3">
+        {% if user.is_authenticated %}
+          <button class="btn btn-sm like-btn {% if perfume in user.profile.liked_perfumes.all %}remove-liked{% else %}add-liked{% endif %}"
+                  data-perfume-id="{{ perfume.id }}">
+            {% if perfume in user.profile.liked_perfumes.all %}
+              ❌ Remove from Liked
+            {% else %}
+              ❤️ Add to Liked
+            {% endif %}
+          </button>
+        {% endif %}
+        <a href="{% url 'perfume_detail' slug=perfume.slug %}" class="btn btn-dark mt-2">View Details</a>
+      </div>
+  
+    </div>
+  </div>
+  
+  <style>
+  .btn-sm {
+    font-size: 0.7rem;
+  }
+</style>
+  
+    

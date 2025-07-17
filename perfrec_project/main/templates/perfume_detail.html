@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}{{ perfume.name }} Details{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<div class="container py-1">
+  <div class="bg-white border border-dark rounded p-4 shadow-sm">
+    <div class="row mb-2 mt-4 ">
+      <!-- Perfume Info -->
+      <div class="col-md-7 ">
+        <div class="px-md-5">
+        <h2 class="fw-semibold">{{ perfume.name }}</h2>
+        <p>
+          <strong> Brand:</strong> {{ perfume.brand.name }}
+          {% if perfume.year %}  &nbsp; | &nbsp; <strong>🗓️ Year:</strong> {{ perfume.year }} {% endif %}
+        </p>
+        {% if perfume.fragrance_type != "Unknown Type" %}<strong>🧪 Type:</strong> {{ perfume.fragrance_type }}{% endif %}
+        <p></p>
+        <p>
+          <strong> Gender:</strong> {{ perfume.gender }} &nbsp; | &nbsp;
+          <strong>⭐ Rating:</strong> {{ perfume.rating_score }}/10
+        </p>
+        
+
+        {% if perfume.perfumeaccord_set.all %}
+        <p><strong>🎯 Accords:</strong><br>
+          {% for acc in perfume.perfumeaccord_set.all %}
+            <span class="badge rounded-pill bg-light text-dark border me-2 mb-1">{{ acc.accord.name }}</span>
+          {% endfor %}
+        </p>
+        {% endif %}
+
+        {% if perfume.perfumenote_set.all %}
+        <p><strong>🎵 Notes:</strong><br>
+          {% for note in perfume.perfumenote_set.all %}
+            <span class="badge_small rounded-pill bg-light text-muted border  mb-4 ">{{ note.note.name }}</span>
+          {% endfor %}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+      <!-- Image and Like Button -->
+      <div class="col-md-4 text-center">
+        <img src="{% if perfume.image %}{{ perfume.image.url }}{% else %}/media/perfume_images/placeholder.webp{% endif %}"
+            alt="{{ perfume.name }} image"
+            class="img-fluid mb-3 rounded"
+            style="max-height: 250px; object-fit: contain;">
+        {% if user.is_authenticated %}
+        <button id="like-button"
+          data-perfume-id="{{ perfume.id }}"
+          class="like-btn btn rounded-pill px-4 py-2 mt-4 fw-bold
+                {% if perfume in user.profile.liked_perfumes.all %}
+                  btn-outline-danger remove-liked
+                {% else %}
+                  btn-outline-pink add-liked
+                {% endif %}">
+          {% if perfume in user.profile.liked_perfumes.all %}
+            ❌ Remove from Liked
+          {% else %}
+            ❤️ Add to Liked
+          {% endif %}
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Chart Section -->
+    {% if season_json != '{}' or occasion_json != '{}' or type_json != '{}' %}
+    <div class="row justify-content-center text-center g-1 mt-1">
+      {% if season_json != '{}' %}
+      <div class="col-12 col-md-4 d-flex flex-column align-items-center">
+        <h4>Season</h4>
+        <canvas id="chart_season" data-chart='{{ season_json|safe }}'></canvas>
+      </div>
+      {% endif %}
+      {% if occasion_json != '{}' %}
+      <div class="col-12 col-md-4 d-flex flex-column align-items-center">
+        <h4>Occasion</h4>
+        <canvas id="chart_occasion" data-chart='{{ occasion_json|safe }}'></canvas>
+      </div>
+      {% endif %}
+      {% if type_json != '{}' %}
+      <div class="col-12 col-md-4 d-flex flex-column align-items-center">
+        <h4>Vibe</h4>
+        <canvas id="chart_type" data-chart='{{ type_json|safe }}'></canvas>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if also_liked_perfumes %}
+    <div class="mt-5">
+      <h4 class="text-center">Often Liked Together</h4>
+      <div class="d-flex overflow-auto gap-3 py-2">
+        {% for p in also_liked_perfumes %}
+        <div style="width: 175px; flex: 0 0 auto;">
+          {% include 'partials/perfume_card.html' with perfume=p %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if similar_perfumes %}
+    <div class="mt-5">
+      <h4 class="text-center">Similar Perfumes</h4>
+      <div class="d-flex overflow-auto gap-3 py-2">
+        {% for p in similar_perfumes %}
+        <div style="width: 175px; flex: 0 0 auto;">
+          {% include 'partials/perfume_card.html' with perfume=p %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  const COLORS = {
+      "Animal":"#A1887F","Aquatic":"#B3E5FC","Business":"#CFD8DC",
+      "Chypre":"#CE93D8","Citrus":"#FFF59D","Classic":"#E0E0E0",
+      "Creamy":"#FFF8E1","Daily":"#DCEDC8","Earthy":"#BCAAA4",
+      "Evening":"#5C6BC0","Fall":"#FFCCBC","Feminine":"#F8BBD0","Floral":"#F48FB1",
+      "Foug?re":"#C5E1A5","Fresh":"#B2DFDB","Fruity":"#FFAB91",
+      "Gourmand":"#FFE0B2","Green":"#AED581","Leathery":"#D7CCC8",
+      "Leisure":"#D1C4E9","Masculine":"#90CAF9","Modern":"#B0BEC5",
+      "Night Out":"#3949AB","Oriental":"#FFF176","Powdery":"#E1BEE7","Resinous":"#D7CCC8",
+      "Smoky":"#B0BEC5","Spicy":"#FF8A65","Sport":"#80DEEA",
+      "Spring":"#C8E6C9","Summer":"#FFF59D","Sweet":"#FCE4EC",
+      "Synthetic":"#E0F7FA","Winter":"#E3F2FD","Woody":"#BCAAA4"
+    };
+
+function renderPie(canvas) {
+  const data = JSON.parse(canvas.dataset.chart || '{}');
+  if (!Object.keys(data).length) return;
+
+  new Chart(canvas, {
+    type: 'pie',
+    data: {
+      labels: Object.keys(data),
+      datasets: [{ data: Object.values(data), backgroundColor: Object.keys(data).map(k => COLORS[k] || '#ccc') }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: '#fff', font: { size: 14 },
+          textShadowColor: '#000', textShadowBlur: 3,
+          formatter: (_, ctx) => ctx.chart.data.labels[ctx.dataIndex]
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.label}: ${ctx.parsed}%`
+          }
+        }
+      },
+      responsive: true,
+      maintainAspectRatio: true
+    },
+    plugins: [ChartDataLabels]
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('canvas[data-chart]').forEach(renderPie);
+});
+</script>
+
+<style>
+.btn-outline-pink {
+  color: #000000;
+  border-color: #a73e70a1;
+}
+
+.badge { font-size: 0.9rem; padding: 0.35rem 0.65rem; }
+.badge_small { font-size: 0.9rem; padding: 0.01rem 0.25rem; }
+canvas { max-width: 240px; height: auto !important; margin: 0 auto; }
+.scale-90 {
+  transform: scale(.9);
+  transform-origin: center;
+}
+</style>
+
+{% endblock %}

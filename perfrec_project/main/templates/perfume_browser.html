@@ -1,0 +1,190 @@
+<!-- Perfume Browser Template -->
+{% extends "base.html" %}
+{% block content %}
+<h1 class="display-5 fw-bold text-center mb-4">Perfume Browser</h1>
+
+<form id="filter-form" method="get" class="container px-3" style="max-width: 1400px;">
+  <!-- Search Bar -->
+  <div class="search-container text-center mb-4 position-relative">
+    <div class="input-group mx-auto" style="max-width: 500px; position: relative;">
+      <input type="text" name="q" id="search-input" class="form-control rounded-pill shadow-sm me-2" placeholder="🔍 Search perfumes…" value="{{ request.GET.q }}" autocomplete="off">
+      <button type="submit" class="btn btn-dark rounded-pill px-3">Search</button>
+    </div>
+
+    <ul id="suggestions-list" class="list-group position-absolute w-100 mt-1 shadow-sm d-none"></ul>
+  </div>
+
+  <div class="row">
+    <!-- Sidebar Filters -->
+  <aside class="col-md-2 col-lg-3 mb-4 position-sticky" style="top: calc(80px + 0.5rem); z-index: 101;">
+    <div class="border p-3 rounded shadow-sm bg-white">
+        <input type="hidden" name="filter_logic" id="filter-logic" value="{{ filter_logic|default:'or' }}">
+
+        <h5 class="fw-bold mb-3">Filters</h5>
+        <label for="gender">Gender:</label>
+        <select name="gender" id="gender" class="form-select mb-3">
+          <option value="">All</option>
+          <option value="unisex" {% if request.GET.gender == "unisex" %}selected{% endif %}>Unisex</option>
+          <option value="female" {% if request.GET.gender == "female" %}selected{% endif %}>Female</option>
+          <option value="male" {% if request.GET.gender == "male" %}selected{% endif %}>Male</option>
+        </select>
+
+        <label for="brand">Brand:</label>
+        <select name="brand" id="brand" class="form-select mb-3">
+          <option value="">All Brands</option>
+          {% regroup top_brands by name.0 as brand_groups %}
+          {% for group in brand_groups %}
+            <optgroup label="{{ group.grouper|upper }}">
+              {% for b in group.list %}
+                <option value="{{ b.id }}" {% if current_brand == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+          {% if other_brands %}
+            <optgroup label="Other">
+              {% for b in other_brands %}
+                <option value="{{ b.id }}" {% if current_brand == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        </select>
+
+        <label class="form-label">Accords:</label>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for accord in accords %}
+            <input type="checkbox" name="accords" value="{{ accord.id }}" id="accord-{{ forloop.counter }}" class="btn-check" {% if accord.id|stringformat:"s" in selected_accords %}checked{% endif %} autocomplete="off">
+            <label class="btn btn-outline-dark accord-btn" for="accord-{{ forloop.counter }}">{{ accord.name }}</label>
+          {% endfor %}
+        </div>
+
+        <label class="form-label">Filter Mode:</label>
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <span id="filter-or-text" class="{% if filter_logic == 'and' %}text-muted{% endif %}">OR</span>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="filter-toggle" {% if filter_logic == 'and' %}checked{% endif %}>
+          </div>
+          <span id="filter-and-text" class="{% if filter_logic == 'or' %}text-muted{% endif %}">AND</span>
+        </div>
+
+        <label for="sort">Sort by:</label>
+        <select name="sort" id="sort" class="form-select mb-3">
+          <option value="-rating_count" {% if current_sort == '-rating_count' %}selected{% endif %}>Most Votes</option>
+          <option value="-rating_score" {% if current_sort == '-rating_score' %}selected{% endif %}>Highest Rating</option>
+          <option value="name"          {% if current_sort == 'name' %}selected{% endif %}>A-Z</option>
+          <option value="-name"         {% if current_sort == '-name' %}selected{% endif %}>Z-A</option>
+        </select>
+
+        <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">Clear</button>
+      </div>
+    </aside>
+
+    <!-- Perfume Cards -->
+    <main class="col-md-10 col-lg-9">
+      {% if perfumes %}
+        <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+          {% for perfume in perfumes %}
+            <div class="col">{% include 'partials/perfume_card.html' with perfume=perfume %}</div>
+          {% endfor %}
+        </div>
+
+        {% if is_paginated %}
+          <div class="mt-4 text-center">
+            {% if page_obj.has_previous %}
+              <a href="?{% querystring page=page_obj.previous_page_number %}" class="btn btn-dark">Previous</a>
+            {% endif %}
+            <span class="mx-3">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+              <a href="?{% querystring page=page_obj.next_page_number %}" class="btn btn-dark">Next</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% else %}
+        <p class="text-muted text-center mt-3">No perfumes found. Try adjusting your filters.</p>
+      {% endif %}
+    </main>
+  </div>
+</form>
+
+<!-- Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form   = document.getElementById("filter-form");
+  const logic  = document.getElementById("filter-logic");
+  const toggle = document.getElementById("filter-toggle");
+
+  // AND/OR toggle
+  toggle.addEventListener("change", () => {
+    const val = toggle.checked ? "and" : "or";
+    logic.value = val;
+    document.getElementById("filter-or-text").classList.toggle("text-muted", val === "and");
+    document.getElementById("filter-and-text").classList.toggle("text-muted", val === "or");
+    form.submit();
+  });
+
+  // Dropdowns and checkboxes
+  ["brand", "sort", "gender"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", () => form.submit());
+  });
+  document.querySelectorAll('input[name="accords"]').forEach(cb => {
+    cb.addEventListener("change", () => form.submit());
+  });
+
+  // Live suggestions
+  const searchInput = document.getElementById("search-input");
+  const suggestions = document.getElementById("suggestions-list");
+
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    if (q.length < 2) {
+      suggestions.innerHTML = "";
+      suggestions.classList.add("d-none");
+      return;
+    }
+
+    fetch(`/search-suggestions/?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        suggestions.classList.remove("d-none");
+        suggestions.innerHTML = "";
+        const seen = new Set();
+        data.forEach(item => {
+          if (seen.has(item.name)) return;
+          seen.add(item.name);
+          const li = document.createElement("li");
+          li.className = "list-group-item list-group-item-action text-start";
+          li.textContent = item.label;
+          li.addEventListener("click", () => {
+            searchInput.value = item.name;
+            form.submit();
+          });
+          suggestions.appendChild(li);
+        });
+      })
+      .catch(console.error);
+  });
+});
+
+function clearFilters() { window.location.href = window.location.pathname; }
+</script>
+
+<!-- Styles -->
+<style>
+.search-container .form-control { font-size: 1.1rem; padding: 10px 15px; border: 2px solid #ccc; transition: .3s; }
+.search-container .form-control:focus { border-color: #424242; box-shadow: 0 0 8px rgba(10,10,10,.5); }
+.accord-btn { border-radius: 20px; cursor: pointer; }
+.accord-btn:hover { background: #1f1f1f; color: #fff; }
+.btn-check:checked + .accord-btn { background: #000; color: #fff; }
+#suggestions-list { position: absolute; top: 100%; left: 50%; width: 90%; max-width: 500px; transform: translateX(-50%); z-index: 1050; background: #fff; border: 1px solid #ddd; border-radius: 5px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 6px rgba(0,0,0,.1); }
+#filter-form { font-size: .85rem; padding: .75rem !important; }
+#filter-form label,
+#filter-form select,
+#filter-form .form-check,
+#filter-form .form-control { font-size: .85rem; }
+#filter-form .form-select,
+#filter-form .form-control { padding: .25rem .5rem; }
+#filter-form .btn { padding: .3rem .75rem; font-size: .85rem; }
+#filter-form h5 { font-size: 1rem; margin-bottom: .75rem; }
+.accord-btn { font-size: .8rem; padding: .3rem .6rem; }
+</style>
+{% endblock %}

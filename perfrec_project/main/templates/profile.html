@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Profile Header -->
+            <h2 class="text-center mb-4">Welcome, <b>{{ user.username }}</b>!</h2>
+
+            <!-- Profile Form -->
+            <form method="post" id="profile-form" class="p-4 border rounded shadow-sm bg-light">
+                {% csrf_token %}
+                {{ form.media }}
+
+                <!-- Liked Perfumes -->
+                <h3 class="mt-3">Liked Perfumes</h3>
+                <ul id="liked-perfumes-list" class="list-group">
+                    {% for perfume in profile.liked_perfumes.all %}
+                        <li id="perfume-{{ perfume.id }}" class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{{ perfume.get_absolute_url }}" class="text-decoration-none text-dark fw-semibold">
+                                {{ perfume.name }}
+                            </a>                            
+                            <button class="btn btn-sm btn-outline-danger remove-perfume" data-id="{{ perfume.id }}">❌</button>
+                        </li>
+                    {% empty %}
+                        <p class="text-muted">No liked perfumes yet.</p>
+                    {% endfor %}
+                </ul>
+
+                <!-- Browse Instead of Add -->
+                <div class="mt-4 text-center">
+                    <p class="text-muted">
+                        You can like perfumes by browsing our collection. Click the button below to get started.
+                    </p>
+                    <a href="{% url 'perfume_browser' %}" class="btn btn-dark">
+                        Browse and Like Perfumes
+                    </a>
+                </div>
+
+                <!-- Preferred Gender -->
+                <div class="mb-3 mt-4">
+                    <label class="form-label fw-bold">Preferred Perfume Gender:</label>
+                    <div class="input-group">
+                        {{ form.preferred_perfume_gender }}
+                        <div class="ms-2">
+                            <button type="submit" name="save_gender" class="btn btn-dark same-height">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.same-height {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 16px;
+}
+.ms-2 {
+    margin-left: 8px;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Remove perfume
+    document.querySelectorAll(".remove-perfume").forEach(button => {
+        button.addEventListener("click", function () {
+            let perfumeId = this.getAttribute("data-id");
+            let perfumeItem = document.getElementById(`perfume-${perfumeId}`);
+            fetch("{% url 'remove-liked-perfume' 0 %}".replace("0", perfumeId), {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "Content-Type": "application/json"
+                }
+            }).then(r => r.json()).then(data => {
+                if (data.success) perfumeItem.remove();
+                else alert("Failed to remove perfume.");
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

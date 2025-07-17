@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% if user.is_authenticated %}
+  <div class="container text-center">
+    <h2 class="mb-3">Hello, {{ user.username }}!</h2>
+  </div> 
+  
+  {% if len_liked_perfumes == 0 %}
+    <p class="text-center text-muted mt-4">
+      You haven't liked any perfumes yet.
+      <a href="{% url 'perfume_browser' %}" class="text-primary">Browse perfumes</a> and like a few to get personalized recommendations!
+    </p>
+  {% elif personalized_recommendations %}
+  <div class="container mt-4">
+    <h6 class="text-center mb-4 fst-italic text-muted">
+      What’s your fragrance mood? <span style="font-size: 1.2em;">🧘</span>
+    </h6>
+  
+    <div id="filter-buttons" class="d-flex flex-column align-items-center gap-3">
+  
+      <!-- Season + Occasion in one row -->
+      <div class="d-flex flex-wrap justify-content-center gap-5">
+        <!-- Season -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-semibold">Season:</span>
+          {% for season in season_filters %}
+            <button class="btn btn-outline-dark btn  px-2 filter-btn" data-type="season" data-value="{{ season }}">{{ season }}</button>
+          {% endfor %}
+        </div>
+  
+        <!-- Occasion -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-semibold">Occasion:</span>
+          {% for occasion in occasion_filters %}
+            <button class="btn btn-outline-dark btn px-2 filter-btn" data-type="occasion" data-value="{{ occasion }}">{{ occasion }}</button>
+          {% endfor %}
+        </div>
+      </div>
+  
+      <!-- Type (subtle row) -->
+      <div class="d-flex flex-wrap justify-content-center gap-1 mt-2">
+        <span class="me-2 small text-muted">Accords:</span>
+        {% for t in type_filters %}
+          <button class="btn btn-outline-secondary btn-sm px-1 text-muted border-1 filter-btn" style="font-size: 0.75rem;" data-type="type" data-value="{{ t }}">{{ t }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div> 
+    <div class="container mt-5">
+      <div class="d-flex justify-content-center align-items-center gap-2 mb-3">
+        <h3 class="m-0 text-center">
+          Top picks for you <i class="bi bi-stars me-1"></i>
+        </h3>
+        {% if top_neuron_tooltip %}
+          <span class="tooltip-card">
+            <i class="bi bi-info-circle-fill text-muted"></i>
+            <span class="tooltip-text">
+              We think you like:<br><strong>{{ top_neuron_tooltip }}</strong>
+            </span>
+          </span>
+        {% endif %}
+      </div>
+
+      <div id="recommendation-grid" class="row row-cols-1 row-cols-md-5 mt-2 g-4">
+        {% for perfume in personalized_recommendations %}
+          <div class="col d-flex justify-content-center">
+            {% include 'partials/perfume_card.html' with perfume=perfume %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="text-center mt-4">
+        <button id="load-more-btn" class="btn btn-outline-dark">Show More</button>
+      </div>
+    </div>
+    
+  {% else %}
+    <p class="text-center text-muted mt-4">
+      No recommendations available yet. Please check back later.
+    </p>
+  {% endif %}
+
+{% else %}
+  <div class="container text-center py-4">
+    <h2 class="fw-semibold mb-2" style="color: #343a40;">Welcome to <span style="color: #5a5a5a;">PerfRec <i class="bi bi-stars me-1"></i></span></h2>
+    <p class="text-muted mb-0" style="font-size: 1.1rem;">
+      Discover your next favorite fragrance
+    </p>
+  </div>
+  <div class="text-center mt-1">
+    <p>Please <a href="{% url 'login' %}" class="text-primary">log in</a> or
+       <a href="{% url 'register' %}" class="text-primary">register</a> to see personalized recommendations.</p>
+  </div>
+{% endif %}
+
+
+{% if popular_perfumes %}
+  <div class="container mt-5">
+      <h2 class="text-center">Most Popular Perfumes</h2>
+      <div class="row row-cols-1 row-cols-md-5 g-4">
+          {% for perfume in popular_perfumes %}
+              <div class="col d-flex justify-content-center">
+                  {% include 'partials/perfume_card.html' with perfume=perfume %}
+              </div>
+          {% endfor %}
+      </div>
+  </div>
+{% endif %}
+
+<div class="text-center mt-5">
+    <a href="{% url 'perfume_browser' %}" class="btn btn-outline-secondary">Want more? Browse perfumes! →</a>
+</div>
+
+<style>
+  .filter-btn{
+    --c:  #000;                 /* main colour – filled by JS             */
+    --bg: rgba(0,0,0,0.08);     /* light tint  – filled by JS             */
+    border: 0.5px var(--bg) !important;
+    color:  #141414 !important;
+    background: var(--bg) !important;
+    font-weight: 600;
+    transition: background .15s, color .15s;
+  }
+  .filter-btn:hover,
+  .filter-btn.active{
+    background: var(--c) !important;
+    color:#fff !important;
+  }
+
+  .tooltip-card {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+  }
+
+  .tooltip-card i {
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+
+  .tooltip-card .tooltip-text {
+    visibility: hidden;
+    width: max-content;
+    max-width: 290px;
+    background-color: #222;
+    color: #fff;
+    text-align: left;
+    padding: 8px 12px;
+    border-radius: 8px;
+    position: absolute;
+    top: -50%;
+    left: 120%;
+    z-index: 10;
+    white-space: normal;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.25);
+    font-size: 0.9rem;
+  }
+
+  .tooltip-card:hover .tooltip-text {
+    visibility: visible;
+  }
+  </style>
+  
+  <script>
+
+  const COLORS = {
+    Animal:   "#7F6358", Aquatic:  "#44C4FF", Business: "#8FA6B1",
+    Citrus:   "#FFEA36", Classic:  "#A8A8A8", Creamy:   "#FFDB68",
+    Daily:    "#A8D86E", Earthy:   "#99796E", Evening:  "#3444A0",
+    Fall:     "#B4531B", Floral:   "#E85A82", Fresh:    "#64C8BF",
+    Fruity:   "#FF5E2D", Gourmand: "#FFCD63", Green:    "#7EB845",
+    Leathery: "#908178",  Leisure:  "#926FD2", Modern:   "#7792A0",
+    "Night Out":"#243286", Oriental: "#F9912B", Powdery:  "#BFA9C6",
+    Resinous: "#8C4A1D", Smoky:    "#7792A0", Spicy:    "#FF460B",
+    Sport:    "#25D3E9", Spring:   "#78C97B", Summer:   "#FFB733",
+    Sweet:    "#F96E9C", Synthetic:"#71E3F1", Winter:   "#69BFFE",
+    Woody:    "#99796E"
+  };
+
+  function tint(hex,alpha=.50){
+    const bigint=parseInt(hex.slice(1),16);
+    const r=(bigint>>16)&255, g=(bigint>>8)&255, b=bigint&255;
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.querySelectorAll('.filter-btn').forEach(btn=>{
+        const key = btn.dataset.value?.trim();
+        const hex = COLORS[key];
+        if(!hex) return;                                   // skip unknowns
+  
+        btn.style.setProperty('--c',  hex);
+        btn.style.setProperty('--bg', tint(hex,.20));   
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+      const loadMoreBtn = document.getElementById("load-more-btn");
+      const recGrid = document.getElementById("recommendation-grid");
+      const filterBtns = document.querySelectorAll(".filter-btn");
+  
+      let activeFilters = { season: [], occasion: [], type: [] };
+      let topN = 30;
+  
+      function toggleFilter(btn) {
+          const type = btn.dataset.type;
+          const value = btn.dataset.value;
+          btn.classList.toggle("active");
+  
+          if (btn.classList.contains("active")) {
+              activeFilters[type].push(value);
+          } else {
+              activeFilters[type] = activeFilters[type].filter(v => v !== value);
+          }
+      }
+  
+      function fetchRecommendations() {
+          fetch("{% url 'main_page' %}", {
+              method: "POST",
+              headers: {
+                  "X-CSRFToken": "{{ csrf_token }}",
+                  "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                  filters: activeFilters,
+                  top_n: topN
+              }),
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  recGrid.innerHTML = ""; // always reset
+                  data.recommendations.forEach(rec => {
+                      const wrapper = document.createElement("div");
+                      wrapper.className = "col d-flex justify-content-center";
+                      wrapper.innerHTML = rec.html;
+                      recGrid.appendChild(wrapper);
+                  });
+  
+                  if (data.recommendations.length < topN) {
+                      loadMoreBtn.disabled = true;
+                      loadMoreBtn.textContent = "No more to show";
+                  } else {
+                      loadMoreBtn.disabled = false;
+                      loadMoreBtn.textContent = "Show More";
+                  }
+              }
+          })
+          .catch(error => console.error("Error fetching recommendations:", error));
+      }
+  
+      // --- Filter clicks reset topN ---
+      filterBtns.forEach(btn => {
+          btn.addEventListener("click", () => {
+              toggleFilter(btn);
+              topN = topN;
+              fetchRecommendations();
+          });
+      });
+  
+      // --- Load More increments topN and re-fetches ---
+      if (loadMoreBtn) {
+          loadMoreBtn.addEventListener("click", () => {
+              topN += 20;
+              fetchRecommendations();
+          });
+      }
+  });
+  </script>
+  
+{% endblock %}

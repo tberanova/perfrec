@@ -1,0 +1,10 @@
+results/*
+!results/.gitkeep
+
+serialized/*
+!serialized/.gitkeep
+
+*.pyc
+*.npy
+*.pkl
+db.sqlite3
